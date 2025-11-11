@@ -117,15 +117,13 @@ export function formatType(
     // Check if this type has a generated page and should be linked
     if (typeToUrlMap && typeToUrlMap.has(typeName)) {
       const targetUrl = typeToUrlMap.get(typeName)!;
-      let linkUrl = targetUrl;
-
-      // Make relative if we have current page URL
-      if (currentPageUrl) {
-        linkUrl = relativePath(currentPageUrl, targetUrl);
-      }
+      // Use absolute paths for Mintlify (starting with /)
+      // Remove .mdx extension if present and ensure leading slash
+      const cleanUrl = targetUrl.replace(/\.mdx$/, '');
+      const absoluteUrl = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
 
       // Wrap in link, preserving the type name
-      typeName = `[${typeName}](${linkUrl})`;
+      typeName = `[${typeName}](${absoluteUrl})`;
     }
 
     let result = typeName;

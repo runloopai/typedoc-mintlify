@@ -88,7 +88,9 @@ export class MintlifyTheme extends MarkdownTheme {
         const folder = kindMap[reflection.kind] || 'modules';
         const fileName = flattenOutputFiles ? reflection.name : `${folder}/${reflection.name}`;
         const pageUrl = `${fileName}${fileExtension}`.replace(/\.mdx$/, '');
-        return this.reflectionRenderer.render(reflection, pageUrl);
+        // Ensure pageUrl has api/ prefix to match typeToUrlMap format
+        const pageUrlWithApi = pageUrl.startsWith('api/') ? pageUrl : `api/${pageUrl}`;
+        return this.reflectionRenderer.render(reflection, pageUrlWithApi);
       }
     }
 

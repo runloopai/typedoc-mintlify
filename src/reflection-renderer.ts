@@ -482,10 +482,18 @@ description: "${safeDescription}"
     }
 
     const type = this.formatTypeWithLinks(signature.type);
-    const description =
-      this.extractCommentText(
-        signature.comment?.blockTags?.find((t) => t.tag === '@returns')?.content
-      ) || `Returns ${type}.`;
+    const returnsComment = this.extractCommentText(
+      signature.comment?.blockTags?.find((t) => t.tag === '@returns')?.content
+    );
+
+    // Build description - include type with links
+    let description = returnsComment || `Returns ${type}.`;
+    // If there's a custom description but it doesn't mention the type, append it
+    if (returnsComment && !returnsComment.toLowerCase().includes('returns')) {
+      description = `${returnsComment} Returns ${type}.`;
+    } else if (!returnsComment) {
+      description = `Returns ${type}.`;
+    }
 
     // For ResponseField, we need to escape the type if it contains markdown links
     // But keep the link in the description
