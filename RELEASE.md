@@ -194,6 +194,12 @@ All commits **must** follow Conventional Commits format:
 [optional footer(s)]
 ```
 
+**Note:** This project uses **Squash and Merge** for PRs. When merging a PR:
+
+- The squash commit message must follow conventional commits format
+- Combine multiple related changes into one comprehensive message
+- See [PR_MERGE_STRATEGY.md](PR_MERGE_STRATEGY.md) for detailed guidance
+
 ### Types
 
 - `feat`: New feature (triggers MINOR bump)
