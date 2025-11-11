@@ -68,31 +68,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Validate commit messages
-        run: |
-          # Get commits in this PR
-          COMMITS=$(git log origin/main..HEAD --pretty=format:"%s")
-
-          # Conventional commit pattern
-          PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
-
-          # Validate each commit
-          while IFS= read -r commit; do
-            if ! echo "$commit" | grep -qE "$PATTERN"; then
-              echo "❌ Invalid commit message: $commit"
-              echo ""
-              echo "Commit messages must follow Conventional Commits format:"
-              echo "  <type>[optional scope]: <description>"
-              exit 1
-            fi
-          done <<< "$COMMITS"
-
-          echo "✅ All commit messages are valid"
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: .commitlintrc.json
+          failOnWarnings: false
+          helpURL: 'https://www.conventionalcommits.org/'
 
   dependency-audit:
     name: Security Audit
