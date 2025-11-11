@@ -487,11 +487,21 @@ description: "${safeDescription}"
     );
 
     // Build description - include type with links
-    let description = returnsComment || `Returns ${type}.`;
-    // If there's a custom description but it doesn't mention the type, append it
-    if (returnsComment && !returnsComment.toLowerCase().includes('returns')) {
-      description = `${returnsComment} Returns ${type}.`;
-    } else if (!returnsComment) {
+    let description: string;
+    if (returnsComment) {
+      // Extract all type names from the formatted type (including generics)
+      const typeNames = type.match(/\[([^\]]+)\]\([^)]+\)/g) || [];
+      const plainTypeNames = typeNames.map((t) => t.replace(/\[([^\]]+)\]\([^)]+\)/, '$1'));
+      // Check if any type name is mentioned in the comment
+      const mentionsType = plainTypeNames.some((name) =>
+        returnsComment.toLowerCase().includes(name.toLowerCase())
+      );
+      if (mentionsType) {
+        description = returnsComment;
+      } else {
+        description = `${returnsComment} Returns ${type}.`;
+      }
+    } else {
       description = `Returns ${type}.`;
     }
 
@@ -508,8 +518,13 @@ description: "${safeDescription}"
     const name = property.name;
     const type = this.formatTypeWithLinks(property.type);
     const required = !property.flags.isOptional;
-    const description =
-      this.extractCommentText(property.comment?.summary) || `The ${name} property.`;
+    let description = this.extractCommentText(property.comment?.summary) || `The ${name} property.`;
+
+    // Include type with links in description if not already mentioned
+    const typeName = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    if (!description.toLowerCase().includes(typeName.toLowerCase().split('<')[0])) {
+      description = `${description} Type: ${type}.`;
+    }
 
     // Use bold text instead of H5 heading (Mintlify only supports up to H4)
     let content = `**${name}**\n\n`;
