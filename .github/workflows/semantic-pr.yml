@@ -41,6 +41,8 @@ jobs:
 
       - name: Generate suggested squash commit message
         id: suggest
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           # Get all commits in the PR
           COMMITS=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%s")
@@ -74,15 +76,18 @@ jobs:
             SUGGESTED="$TYPE: "
           fi
           
-          # Use PR title if available, otherwise combine first few commit descriptions
-          if [ -n "${{ github.event.pull_request.title }}" ]; then
-            PR_TITLE="${{ github.event.pull_request.title }}"
-            # Remove type prefix if present
-            PR_TITLE=$(echo "$PR_TITLE" | sed 's/^[^:]*: //')
-            SUGGESTED="${SUGGESTED}${PR_TITLE}"
+          # Use PR title if it follows conventional commits, otherwise use first commit description
+          if echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?:"; then
+            # PR title already has type, use it as-is
+            FULL_MESSAGE="$PR_TITLE"
+          elif [ -n "$PR_TITLE" ]; then
+            # PR title exists but no type, add our determined type
+            PR_DESC=$(echo "$PR_TITLE" | sed 's/^[^:]*: //')
+            FULL_MESSAGE="${SUGGESTED}${PR_TITLE}"
           else
+            # No PR title, use first commit description
             FIRST_DESC=$(echo "$DESCRIPTIONS" | head -1)
-            SUGGESTED="${SUGGESTED}${FIRST_DESC}"
+            FULL_MESSAGE="${SUGGESTED}${FIRST_DESC}"
           fi
           
           # Add body with commit details
@@ -98,43 +103,47 @@ jobs:
           # Limit to first 10 commits
           BODY=$(echo -e "$BODY" | head -10)
           
-          # Create full message
-          FULL_MESSAGE="${SUGGESTED}\n\n${BODY}"
+          # Append body if we have commits
+          if [ -n "$BODY" ]; then
+            FULL_MESSAGE="${FULL_MESSAGE}\n\n${BODY}"
+          fi
           
-          # Output for GitHub Actions
-          echo "message<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$FULL_MESSAGE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          
-          # Also output as comment
-          echo "SUGGESTED_MESSAGE<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$FULL_MESSAGE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Output for GitHub Actions (multiline)
+          {
+            echo "message<<EOF"
+            echo -e "$FULL_MESSAGE"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Comment on PR with suggested message
         uses: actions/github-script@v7
         if: github.event.action != 'synchronize'
+        env:
+          SUGGESTED_MESSAGE: ${{ steps.suggest.outputs.message }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const message = `## 💡 Suggested Squash Commit Message
+            const message = process.env.SUGGESTED_MESSAGE || 'Unable to generate message';
+            
+            const comment = `## 💡 Suggested Squash Commit Message
             
             When you merge this PR with squash, use this commit message:
             
             \`\`\`
-            ${{ steps.suggest.outputs.message }}
+            ${message}
             \`\`\`
             
             **Note:** GitHub will use your PR title as the default squash commit message. Make sure your PR title follows Conventional Commits format:
             - \`feat(scope): description\`
             - \`fix(scope): description\`
             - \`docs(scope): description\`
-            `;
+            
+            **Tip:** Configure GitHub to use PR title as default squash commit message in Settings → Pull Requests.`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: message
+              body: comment
             });
 
