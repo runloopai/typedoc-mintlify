@@ -1,0 +1,53 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "entryPointStrategy": "expand",
+  "out": "api",
+  "plugin": ["typedoc-plugin-markdown", "typedoc-mintlify"],
+  "theme": "mintlify",
+  "mintlifyComponents": true,
+  "generateMintlifyNav": false,
+  "readme": "README.md",
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "includeVersion": true,
+  "hideGenerator": true,
+  "fileExtension": ".mdx",
+  "entryFileName": "index",
+  "flattenOutputFiles": false,
+  "outputFileStrategy": "members",
+  "categorizeByGroup": true,
+  "membersWithOwnFile": ["Class", "Interface", "Function", "Enum", "TypeAlias"],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "searchInComments": true,
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Method",
+    "Accessor",
+    "Function",
+    "Variable"
+  ],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": true
+  },
+  "validation": {
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}

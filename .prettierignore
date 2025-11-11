@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+
+# Generated documentation
+mintlify-docs/
+example/mintlify-docs/
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# OS
+.DS_Store
+

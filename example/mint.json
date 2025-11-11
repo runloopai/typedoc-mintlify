@@ -1,0 +1,42 @@
+{
+  "name": "TypeDoc Mintlify Example",
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373",
+    "anchors": {
+      "from": "#0D9373",
+      "to": "#07C983"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/runloopai/typedoc-mintlify"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://github.com/runloopai/typedoc-mintlify"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["introduction", "installation", "quickstart"]
+    },
+    {
+      "group": "API Documentation",
+      "pages": ["api/index"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/runloopai/typedoc-mintlify"
+  }
+}

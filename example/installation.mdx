@@ -1,0 +1,126 @@
+---
+title: Installation
+description: "Install and set up typedoc-mintlify in your project"
+---
+
+# Installation
+
+Get started with typedoc-mintlify by installing it in your TypeScript project.
+
+## Prerequisites
+
+Before installing, make sure you have:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node">
+    Version 16 or higher
+  </Card>
+  <Card title="TypeScript" icon="code">
+    A TypeScript project with JSDoc comments
+  </Card>
+</CardGroup>
+
+## Install via npm
+
+Install typedoc-mintlify and its peer dependencies:
+
+```bash
+npm install --save-dev typedoc typedoc-mintlify
+```
+
+## Install via yarn
+
+```bash
+yarn add -D typedoc typedoc-mintlify
+```
+
+## Install via pnpm
+
+```bash
+pnpm add -D typedoc typedoc-mintlify
+```
+
+## Configuration
+
+Create a `typedoc.json` file in your project root:
+
+```json typedoc.json
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "plugin": ["typedoc-mintlify"],
+  "theme": "mintlify",
+  "readme": "none"
+}
+```
+
+<Note>
+  Adjust the `entryPoints` to match your project structure. You can specify multiple entry points or use glob patterns.
+</Note>
+
+## Add npm Scripts
+
+Add convenient scripts to your `package.json`:
+
+```json package.json
+{
+  "scripts": {
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "docs:preview": "mintlify dev"
+  }
+}
+```
+
+## Verify Installation
+
+Test that everything is set up correctly:
+
+```bash
+npm run docs
+```
+
+This should generate documentation in your `docs` directory.
+
+<Check>
+  Installation complete! Your documentation is ready to generate.
+</Check>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Generate your first docs
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/index">
+    See example output
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Dependency conflicts">
+    If you encounter peer dependency issues, try:
+    ```bash
+    npm install --legacy-peer-deps
+    ```
+  </Accordion>
+  
+  <Accordion title="Plugin not loading">
+    Ensure your package.json has `"type": "module"` or typedoc-mintlify is properly listed in the plugins array.
+  </Accordion>
+  
+  <Accordion title="TypeDoc not found">
+    Make sure TypeDoc is installed:
+    ```bash
+    npm install --save-dev typedoc
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  typedoc-mintlify requires TypeDoc 0.26.x or higher to work correctly.
+</Warning>
+
