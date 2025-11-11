@@ -448,9 +448,19 @@ description: "${safeDescription}"
       const name = param.name;
       const type = this.formatTypeWithLinks(param.type);
       const required = !param.flags.isOptional;
-      const description =
+      let description =
         this.extractCommentText(param.comment?.summary) ||
         this.generateParameterDescription(name, type);
+
+      // Include type with links in description if it contains links
+      // (ParamField type attribute doesn't support markdown)
+      if (type.includes('[') && type.includes('](')) {
+        // Type has links, add it to description
+        const typeName = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        if (!description.toLowerCase().includes(typeName.toLowerCase().split('<')[0])) {
+          description = `${description} Type: ${type}.`;
+        }
+      }
 
       // Determine parameter location
       const location = this.determineParameterLocation(name);
@@ -486,21 +496,12 @@ description: "${safeDescription}"
       signature.comment?.blockTags?.find((t) => t.tag === '@returns')?.content
     );
 
-    // Build description - include type with links
+    // Build description - always include type with links for clarity
+    // The type parameter in ResponseField doesn't support markdown, so links go in description
     let description: string;
     if (returnsComment) {
-      // Extract all type names from the formatted type (including generics)
-      const typeNames = type.match(/\[([^\]]+)\]\([^)]+\)/g) || [];
-      const plainTypeNames = typeNames.map((t) => t.replace(/\[([^\]]+)\]\([^)]+\)/, '$1'));
-      // Check if any type name is mentioned in the comment
-      const mentionsType = plainTypeNames.some((name) =>
-        returnsComment.toLowerCase().includes(name.toLowerCase())
-      );
-      if (mentionsType) {
-        description = returnsComment;
-      } else {
-        description = `${returnsComment} Returns ${type}.`;
-      }
+      // Always append the type so links are visible, even if description mentions it
+      description = `${returnsComment} Returns ${type}.`;
     } else {
       description = `Returns ${type}.`;
     }
