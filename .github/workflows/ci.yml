@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [16, 18, 20]
+        node-version: [22]
     steps:
       - uses: actions/checkout@v4
 
@@ -77,10 +77,10 @@ jobs:
         run: |
           # Get commits in this PR
           COMMITS=$(git log origin/main..HEAD --pretty=format:"%s")
-          
+
           # Conventional commit pattern
           PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
-          
+
           # Validate each commit
           while IFS= read -r commit; do
             if ! echo "$commit" | grep -qE "$PATTERN"; then
@@ -91,7 +91,7 @@ jobs:
               exit 1
             fi
           done <<< "$COMMITS"
-          
+
           echo "✅ All commit messages are valid"
 
   dependency-audit:
@@ -117,11 +117,10 @@ jobs:
         run: |
           AUDIT_RESULT=$(npm audit --json)
           VULNERABILITIES=$(echo $AUDIT_RESULT | jq '.metadata.vulnerabilities.total')
-          
+
           if [ "$VULNERABILITIES" -gt 0 ]; then
             echo "⚠️  Found $VULNERABILITIES vulnerabilities"
             npm audit
           else
             echo "✅ No vulnerabilities found"
           fi
-
