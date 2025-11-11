@@ -8,6 +8,7 @@ import type {
 } from 'typedoc';
 import { MintlifyReflectionRenderer } from './reflection-renderer.js';
 import { MintlifyComponents } from './components.js';
+import { formatType } from './utils.js';
 
 const require = createRequire(import.meta.url);
 const markdownPlugin = require('typedoc-plugin-markdown');
@@ -73,8 +74,12 @@ export class MintlifyTheme extends MarkdownTheme {
       ) {
         // Pass the type-to-URL map to the renderer for link generation
         this.reflectionRenderer.setTypeToUrlMap(this.typeToUrlMap);
-        // Build the current page URL from the reflection
+        // Set the index page URL for back links
+        const entryFileName = this.application.options.getValue('entryFileName') || 'index';
         const fileExtension = this.application.options.getValue('fileExtension') || '.mdx';
+        const indexUrl = `api/${entryFileName}${fileExtension}`.replace(/\.mdx$/, '');
+        this.reflectionRenderer.setIndexPageUrl(`/${indexUrl}`);
+        // Build the current page URL from the reflection
         const flattenOutputFiles = this.application.options.getValue(
           'flattenOutputFiles'
         ) as boolean;
@@ -556,6 +561,13 @@ description: "${description.replace(/"/g, '\\"').replace(/\n/g, ' ').trim()}"
           return line;
         }
 
+        // Skip processing if this line contains a function signature pattern
+        // (markdown link followed by inline code with parentheses)
+        // Pattern: [functionName](/link) `(params): returnType`
+        if (line.match(/\[[^\]]+\]\([^)]+\)\s*`\([^`]+\)/)) {
+          return line; // Don't process function signatures
+        }
+
         // Process inline code (single backticks) but not code blocks
         // For types in backticks that should be linked, we need to remove backticks
         // because links don't work inside code blocks in markdown
@@ -774,12 +786,12 @@ description: "${description.replace(/"/g, '\\"').replace(/\n/g, ' ').trim()}"
 
   /**
    * Generate simplified index page content from individual pages
-   * Shows overview with links to individual pages, respecting H3/H4 limit
+   * Shows one-line entries with signatures for functions and brief descriptions
    */
   private generateIndexPageContent(project: ProjectReflection): string {
     const sections: Array<{
       title: string;
-      items: Array<{ name: string; description: string; link: string }>;
+      items: Array<{ line: string }>;
     }> = [];
 
     // Group reflections by kind
@@ -816,59 +828,68 @@ description: "${description.replace(/"/g, '\\"').replace(/\n/g, ' ').trim()}"
       project.children.forEach((child) => visitReflection(child));
     }
 
-    // Build sections with simplified content
+    // Build sections with one-line entries
     if (enums.length > 0) {
       const items = enums.map((enumRef) => {
-        const url = this.typeToUrlMap.get(enumRef.name);
-        const link = url ? `/${url}` : '#';
+        const link = this.getLinkForReflection(enumRef);
         const description = this.extractDescription(enumRef);
-        return { name: enumRef.name, description, link };
+        const summary = description ? ` — ${description}` : '';
+        return { line: `- [${enumRef.name}](${link})${summary}` };
       });
       sections.push({ title: 'Enumerations', items });
     }
 
     if (classes.length > 0) {
       const items = classes.map((classRef) => {
-        const url = this.typeToUrlMap.get(classRef.name);
-        const link = url ? `/${url}` : '#';
+        const link = this.getLinkForReflection(classRef);
         const description = this.extractDescription(classRef);
-        return { name: classRef.name, description, link };
+        const summary = description ? ` — ${description}` : '';
+        return { line: `- [${classRef.name}](${link})${summary}` };
       });
       sections.push({ title: 'Classes', items });
     }
 
     if (interfaces.length > 0) {
       const items = interfaces.map((interfaceRef) => {
-        const url = this.typeToUrlMap.get(interfaceRef.name);
-        const link = url ? `/${url}` : '#';
+        const link = this.getLinkForReflection(interfaceRef);
         const description = this.extractDescription(interfaceRef);
-        return { name: interfaceRef.name, description, link };
+        const summary = description ? ` — ${description}` : '';
+        return { line: `- [${interfaceRef.name}](${link})${summary}` };
       });
       sections.push({ title: 'Interfaces', items });
     }
 
     if (typeAliases.length > 0) {
       const items = typeAliases.map((typeRef) => {
-        const url = this.typeToUrlMap.get(typeRef.name);
-        const link = url ? `/${url}` : '#';
+        const link = this.getLinkForReflection(typeRef);
         const description = this.extractDescription(typeRef);
-        return { name: typeRef.name, description, link };
+        const typeStr = this.formatTypeAliasForIndex(typeRef);
+        const summary = description ? ` — ${description}` : '';
+        // Wrap type in backticks to prevent MDX from parsing curly braces as JSX
+        return { line: `- [${typeRef.name}](${link}): \`${typeStr}\`${summary}` };
       });
       sections.push({ title: 'Type Aliases', items });
     }
 
     if (functions.length > 0) {
       const items = functions.map((funcRef) => {
-        const url = this.typeToUrlMap.get(funcRef.name);
-        const link = url ? `/${url}` : '#';
+        const link = this.getLinkForReflection(funcRef);
+        const signature = this.formatFunctionSignatureForIndex(funcRef);
         const description = this.extractDescription(funcRef);
-        return { name: funcRef.name, description, link };
+        const summary = description ? ` — ${description}` : '';
+        // Extract function name and parameters/return type separately
+        // Format as: [functionName](link) `(params): returnType` — description
+        const nameMatch = signature.match(/^([^(]+)\(/);
+        const funcName = nameMatch ? nameMatch[1] : funcRef.name;
+        const sigPart = signature.substring(funcName.length);
+        // Wrap signature part in backticks to prevent MDX parsing issues with angle brackets
+        // Use template literal with backticks properly escaped
+        return { line: `- [${funcName}](${link}) \`${sigPart}\`${summary}` };
       });
       sections.push({ title: 'Functions', items });
     }
 
-    // Generate markdown content with simplified structure (H2 for sections, H3 for items)
-    // Use AccordionGroup for better organization
+    // Generate markdown content with simplified structure (H2 for sections, list items)
     if (sections.length === 0) {
       return '';
     }
@@ -876,38 +897,120 @@ description: "${description.replace(/"/g, '\\"').replace(/\n/g, ' ').trim()}"
     if (sections.length > 1) {
       // Use AccordionGroup for multiple sections
       const accordions = sections.map((section) => {
-        let sectionContent = '';
-        for (const item of section.items) {
-          sectionContent += `### ${item.name}\n\n`;
-          if (item.description) {
-            sectionContent += `${item.description}\n\n`;
-          }
-          sectionContent += `[View full documentation →](${item.link})\n\n`;
-        }
+        const sectionContent = section.items.map((item) => item.line).join('\n');
         return {
           title: section.title,
-          content: sectionContent.trim(),
+          content: sectionContent,
         };
       });
       return `${this.components.accordionGroup(accordions)}\n\n`;
     } else {
       // Single section, no need for accordion
       let content = `## ${sections[0].title}\n\n`;
-      for (const item of sections[0].items) {
-        content += `### ${item.name}\n\n`;
-        if (item.description) {
-          content += `${item.description}\n\n`;
-        }
-        content += `[View full documentation →](${item.link})\n\n`;
-      }
+      content += sections[0].items.map((item) => item.line).join('\n');
+      content += '\n\n';
       return content;
     }
   }
 
   /**
+   * Get link for a reflection - either to its own page or to parent with anchor
+   */
+  private getLinkForReflection(reflection: DeclarationReflection): string {
+    // Check if this reflection has its own page
+    const url = this.typeToUrlMap.get(reflection.name);
+    if (url) {
+      return `/${url}`;
+    }
+
+    // If no individual page, find parent and create anchor link
+    const parent = this.findParentReflection(reflection);
+    if (parent) {
+      const parentUrl = this.typeToUrlMap.get(parent.name);
+      if (parentUrl) {
+        // Generate anchor from reflection name (lowercase, replace special chars)
+        const anchor = reflection.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return `/${parentUrl}#${anchor}`;
+      }
+    }
+
+    // Fallback to hash anchor
+    return `#${reflection.name.toLowerCase()}`;
+  }
+
+  /**
+   * Find the parent module or class for a reflection
+   */
+  private findParentReflection(reflection: DeclarationReflection): DeclarationReflection | null {
+    // Walk up the parent chain to find a module or class
+    let current: Reflection | undefined = reflection.parent;
+    while (current) {
+      if (current.kind === 2 || current.kind === 128) {
+        // Module or Class
+        return current as DeclarationReflection;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  /**
+   * Format function signature for index page (one line with links)
+   */
+  private formatFunctionSignatureForIndex(funcRef: DeclarationReflection): string {
+    // Get the first signature (functions typically have one)
+    const signature = funcRef.signatures?.[0];
+    if (!signature) {
+      return funcRef.name;
+    }
+
+    const params = signature.parameters || [];
+    const paramList = params
+      .map((p) => {
+        const optional = p.flags.isOptional ? '?' : '';
+        const typeStr = formatType(p.type, this.typeToUrlMap);
+        // Extract plain type name for display (links will be in the full signature)
+        const plainType = typeStr.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        return `${p.name}${optional}: ${plainType}`;
+      })
+      .join(', ');
+
+    const returnType = signature.type ? formatType(signature.type, this.typeToUrlMap) : 'void';
+    // Extract plain type name for display
+    const plainReturnType = returnType.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    return `${funcRef.name}(${paramList}): ${plainReturnType}`;
+  }
+
+  /**
+   * Format type alias for index page
+   */
+  private formatTypeAliasForIndex(typeRef: DeclarationReflection): string {
+    if (!typeRef.type) {
+      return 'any';
+    }
+    const typeStr = formatType(typeRef.type, this.typeToUrlMap);
+    // Extract plain type name for display (links will be clickable in the link itself)
+    return typeStr.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  }
+
+  /**
    * Extract description from a reflection
+   * For functions, check signature comments first, then reflection comment
    */
   private extractDescription(reflection: DeclarationReflection): string {
+    // For functions, check signature comment first
+    if (reflection.kind === 64 && reflection.signatures?.[0]?.comment?.summary) {
+      const summary = reflection.signatures[0].comment.summary
+        .map((part) => part.text || '')
+        .join('')
+        .trim();
+      if (summary) {
+        return summary;
+      }
+    }
+
+    // Fall back to reflection comment
     if (reflection.comment?.summary) {
       const summary = reflection.comment.summary
         .map((part) => part.text || '')

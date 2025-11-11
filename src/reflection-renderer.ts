@@ -17,6 +17,7 @@ export class MintlifyReflectionRenderer {
   private typeToUrlMap: Map<string, string> = new Map();
   private currentPageUrl?: string;
   private frontmatterDescription?: string;
+  private indexPageUrl: string = '/api/index';
 
   constructor() {
     this.components = new MintlifyComponents();
@@ -27,6 +28,13 @@ export class MintlifyReflectionRenderer {
    */
   setTypeToUrlMap(map: Map<string, string>): void {
     this.typeToUrlMap = map;
+  }
+
+  /**
+   * Set the index page URL for back links
+   */
+  setIndexPageUrl(url: string): void {
+    this.indexPageUrl = url;
   }
 
   /**
@@ -58,6 +66,9 @@ export class MintlifyReflectionRenderer {
     // Store current page URL for relative link generation
     this.currentPageUrl = currentPageUrl;
 
+    // Add back link to index or parent
+    content += this.renderBackLink(decl);
+
     // Render based on kind
     if (kind === 128) {
       // Class
@@ -81,6 +92,48 @@ export class MintlifyReflectionRenderer {
     }
 
     return content;
+  }
+
+  /**
+   * Render a back link to the index page or parent
+   */
+  private renderBackLink(reflection: DeclarationReflection): string {
+    // Find parent module or class
+    let parent: Reflection | undefined = reflection.parent;
+    let parentUrl: string | undefined;
+
+    // Walk up the parent chain to find a module, class, or interface
+    while (parent) {
+      if (parent.kind === 2) {
+        // Module - link to index
+        parentUrl = this.indexPageUrl;
+        break;
+      } else if (parent.kind === 128 || parent.kind === 256) {
+        // Class or Interface - link to parent page
+        const parentName = (parent as DeclarationReflection).name;
+        parentUrl = this.typeToUrlMap.get(parentName);
+        if (parentUrl) {
+          parentUrl = `/${parentUrl}`;
+        }
+        break;
+      }
+      parent = parent.parent;
+    }
+
+    // Default to index page if no parent found
+    if (!parentUrl) {
+      parentUrl = this.indexPageUrl;
+    }
+
+    // Determine link text based on what we're linking to
+    let linkText = '← Back to API Reference';
+    if (parent && (parent.kind === 128 || parent.kind === 256)) {
+      const parentName = (parent as DeclarationReflection).name;
+      linkText = `← Back to ${parentName}`;
+    }
+
+    // Use a simple text link instead of Info callout to avoid multiple Info blocks
+    return `[${linkText}](${parentUrl})\n\n`;
   }
 
   /**
@@ -368,7 +421,15 @@ description: "${safeDescription}"
     // Render type
     if (reflection.type) {
       const typeStr = this.formatTypeWithLinks(reflection.type);
-      content += `**Type:** \`${typeStr}\`\n\n`;
+      // If type contains links, don't put it in backticks (links don't work in code blocks)
+      // But we need to escape curly braces to prevent MDX parsing issues
+      if (typeStr.includes('[') && typeStr.includes('](')) {
+        // Escape curly braces for MDX (they would be parsed as JSX otherwise)
+        const escapedType = typeStr.replace(/\{/g, '\\{').replace(/\}/g, '\\}');
+        content += `**Type:** ${escapedType}\n\n`;
+      } else {
+        content += `**Type:** \`${typeStr}\`\n\n`;
+      }
     }
 
     return content;
@@ -475,7 +536,9 @@ description: "${safeDescription}"
               ? 'header'
               : 'body';
 
-      content += `<ParamField ${locationAttr}="${sanitizeAttribute(name)}" type="${sanitizeAttribute(type)}"${required ? ' required' : ''}>\n`;
+      // For ParamField, extract plain type name for attribute (links are in description)
+      const typeForAttribute = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+      content += `<ParamField ${locationAttr}="${sanitizeAttribute(name)}" type="${sanitizeAttribute(typeForAttribute)}"${required ? ' required' : ''}>\n`;
       content += `${description}\n`;
       content += `</ParamField>\n\n`;
     }
@@ -549,7 +612,13 @@ description: "${safeDescription}"
 
     // Use bold text instead of H5 heading (Mintlify only supports up to H4)
     let content = `**${name}**\n\n`;
-    content += `**Type:** \`${type}\`\n\n`;
+    // If type contains links, don't put it in backticks (links don't work in code blocks)
+    // Otherwise, use backticks for code formatting
+    if (type.includes('[') && type.includes('](')) {
+      content += `**Type:** ${type}\n\n`;
+    } else {
+      content += `**Type:** \`${type}\`\n\n`;
+    }
     if (description) {
       content += `${description}\n\n`;
     }
