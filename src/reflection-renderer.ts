@@ -517,9 +517,11 @@ description: "${safeDescription}"
       // (ParamField type attribute doesn't support markdown)
       if (type.includes('[') && type.includes('](')) {
         // Type has links, add it to description
+        // Escape angle brackets to prevent MDX parsing issues
+        const escapedType = this.escapeTypeForMdx(type);
         const typeName = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
         if (!description.toLowerCase().includes(typeName.toLowerCase().split('<')[0])) {
-          description = `${description} Type: ${type}.`;
+          description = `${description} Type: ${escapedType}.`;
         }
       }
 
@@ -561,16 +563,17 @@ description: "${safeDescription}"
 
     // Build description - always include type with links for clarity
     // The type parameter in ResponseField doesn't support markdown, so links go in description
+    // Escape angle brackets in type to prevent MDX parsing issues
+    const escapedType = this.escapeTypeForMdx(type);
     let description: string;
     if (returnsComment) {
       // Always append the type so links are visible, even if description mentions it
-      description = `${returnsComment} Returns ${type}.`;
+      description = `${returnsComment} Returns ${escapedType}.`;
     } else {
-      description = `Returns ${type}.`;
+      description = `Returns ${escapedType}.`;
     }
 
-    // For ResponseField, we need to escape the type if it contains markdown links
-    // But keep the link in the description
+    // For ResponseField, we need to extract the plain type name for the attribute
     const typeForAttribute = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
     return `<ResponseField name="returns" type="${sanitizeAttribute(typeForAttribute)}">\n${description}\n</ResponseField>\n\n`;
   }
@@ -584,16 +587,35 @@ description: "${safeDescription}"
     const required = !property.flags.isOptional;
     let description = this.extractCommentText(property.comment?.summary) || `The ${name} property.`;
 
-    // Include type with links in description if not already mentioned
-    const typeName = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-    if (!description.toLowerCase().includes(typeName.toLowerCase().split('<')[0])) {
-      description = `${description} Type: ${type}.`;
-    }
-
     // Use bold text instead of H5 heading (Mintlify only supports up to H4)
     let content = `**${name}**\n\n`;
-    // For ResponseField, extract plain type name for attribute (links will be in description)
-    const typeForAttribute = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    // Determine the type for the attribute - always use simple type name
+    // Extract base type name (before any generics) to avoid MDX parsing issues
+    let typeForAttribute = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // If it contains generics or is complex, extract just the base type
+    if (!this.isSimpleType(type)) {
+      typeForAttribute = this.getSimpleTypeName(type);
+    } else if (typeForAttribute.includes('<')) {
+      // Even for "simple" types, if they have generics, extract base type
+      typeForAttribute = typeForAttribute.split('<')[0].trim();
+    }
+
+    // Build description with type information
+    // Always put types in backticks in descriptions to prevent MDX parsing issues
+    const plainType = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    // Check if type is already mentioned in description
+    const baseTypeName = plainType.split('<')[0].split('{')[0].split(' | ')[0].trim();
+    const typeAlreadyMentioned =
+      baseTypeName && description.toLowerCase().includes(baseTypeName.toLowerCase());
+
+    if (!typeAlreadyMentioned) {
+      // Always use backticks for type in description to prevent MDX parsing issues
+      // This works for both simple and complex types
+      description = `${description} Type: \`${plainType}\`.`;
+    }
+
     content += `<ResponseField name="${sanitizeAttribute(name)}" type="${sanitizeAttribute(typeForAttribute)}"${required ? ' required' : ''}>\n`;
     content += `${description}\n`;
     content += `</ResponseField>\n\n`;
@@ -801,6 +823,77 @@ description: "${safeDescription}"
     }
 
     return 'path';
+  }
+
+  /**
+   * Check if a type is simple enough to use in ResponseField/ParamField type attribute
+   * Complex types (with object literals, unions, etc.) should use "object" or a simple name
+   */
+  private isSimpleType(type: string): boolean {
+    // Remove links to check the underlying type
+    const plainType = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // Check for complex type patterns
+    if (
+      plainType.includes('{') ||
+      plainType.includes('}') ||
+      plainType.includes(' | ') ||
+      plainType.includes(' & ') ||
+      plainType.includes(' => ') ||
+      plainType.length > 50
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Get a simple type name for use in ResponseField/ParamField type attribute
+   * For complex types, returns "object" or extracts the base type name
+   */
+  private getSimpleTypeName(type: string): string {
+    // Remove links first
+    const plainType = type.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    // If it contains object literals, use "object"
+    if (plainType.includes('{') && plainType.includes('}')) {
+      return 'object';
+    }
+
+    // If it's a union or intersection, try to extract the first type
+    if (plainType.includes(' | ')) {
+      const firstType = plainType.split(' | ')[0].trim();
+      // Extract base type name (before any generics)
+      const match = firstType.match(/^([A-Za-z_][A-Za-z0-9_]*)/);
+      return match ? match[1] : 'object';
+    }
+
+    // If it's too long, try to extract base type
+    if (plainType.length > 50) {
+      const match = plainType.match(/^([A-Za-z_][A-Za-z0-9_]*)/);
+      return match ? match[1] : 'object';
+    }
+
+    // For generics like Record<string, string>, extract the base type
+    if (plainType.includes('<')) {
+      const baseType = plainType.split('<')[0].trim();
+      return baseType || 'object';
+    }
+
+    return plainType;
+  }
+
+  /**
+   * Escape angle brackets in type strings to prevent MDX parsing issues
+   * When types contain links like Promise<[User](...)> we need to escape the < and >
+   */
+  private escapeTypeForMdx(type: string): string {
+    // If the type contains links with angle brackets, escape them
+    // Pattern: Promise<[User](/api/interfaces/User)> -> Promise&lt;[User](/api/interfaces/User)&gt;
+    if (type.includes('<') && type.includes('[') && type.includes('](')) {
+      // Escape angle brackets that are part of generics containing links
+      return type.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    return type;
   }
 
   /**

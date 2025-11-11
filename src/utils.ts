@@ -35,13 +35,21 @@ export function escapeMdx(text: string): string {
 
 /**
  * Sanitizes text for use in MDX attributes
+ * Escapes quotes, newlines, angle brackets, and curly braces to prevent MDX parsing issues
  */
 export function sanitizeAttribute(text: string): string {
   if (!text) {
     return '';
   }
 
-  return text.replace(/"/g, '\\"').replace(/\n/g, ' ').replace(/\r/g, '');
+  return text
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, '')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/{/g, '&#123;')
+    .replace(/}/g, '&#125;');
 }
 
 /**
