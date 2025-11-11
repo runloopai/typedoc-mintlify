@@ -1,0 +1,460 @@
+# Cursor Rules for typedoc-mintlify Plugin
+
+This project is a TypeDoc plugin that generates Mintlify-compatible markdown (MDX) documentation from TypeScript codebases.
+
+## Project Overview
+
+- **Purpose**: Transform TypeDoc output into Mintlify-compatible MDX with proper components, frontmatter, and navigation
+- **Base Plugin**: Extends `typedoc-plugin-markdown` 
+- **Output Format**: MDX files with Mintlify components and `mint.json` navigation file
+- **Key Files**:
+  - `index.ts` - Plugin entry point, registers theme and options
+  - `src/theme.ts` - Mintlify theme implementation (extends MarkdownTheme)
+  - `src/reflection-renderer.ts` - Generates MDX directly from TypeDoc reflections
+  - `src/navigation.ts` - Generates mint.json navigation
+  - `src/components.ts` - Mintlify component utilities
+  - `src/utils.ts` - Helper functions (type formatting, etc.)
+  - `example/` - Test project with sample TypeScript code
+
+## Mintlify MDX Patterns
+
+### Frontmatter Requirements
+Every MDX page must start with YAML frontmatter:
+```yaml
+---
+title: "Page Title"
+description: "User-focused description ending with period."
+---
+```
+
+### Core Mintlify Components
+
+#### 1. ParamField (API Parameters)
+Use for function/method parameters with proper location attributes:
+```mdx
+<ParamField path="userId" type="string" required>
+  Unique identifier for the user.
+</ParamField>
+
+<ParamField query="limit" type="number">
+  Maximum number of results to return.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication.
+</ParamField>
+
+<ParamField body="data" type="UserData">
+  User data to create.
+</ParamField>
+```
+
+**Location Detection Logic**:
+- `path`: IDs, URL parameters (userId, accountId, etc.)
+- `query`: limit, offset, page, sort, filter, query
+- `header`: authorization, auth, headers, apiKey
+- `body`: data, payload, request, body
+
+#### 2. ResponseField (Return Types & Interface Properties)
+Use for return types and interface/type properties:
+```mdx
+<ResponseField name="returns" type="Promise<User>">
+  Returns the user object if found.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  User's email address.
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Additional metadata object.
+</ResponseField>
+```
+
+#### 3. CodeGroup (Multiple Code Examples)
+Group related code examples in different languages:
+```mdx
+<CodeGroup>
+```typescript TypeScript
+const user = await fetchUser('123');
+```
+
+```javascript JavaScript
+const user = await fetchUser('123');
+```
+</CodeGroup>
+```
+
+#### 4. Callouts (Info, Warnings, Notes)
+Transform blockquotes and remarks to callouts:
+```mdx
+<Info>
+This feature requires authentication.
+</Info>
+
+<Warning>
+This method is deprecated and will be removed in version 2.0.
+</Warning>
+
+<Note>
+Remember to handle errors appropriately.
+</Note>
+
+<Tip>
+Use pagination for large result sets.
+</Tip>
+```
+
+#### 5. RequestExample / ResponseExample (API Endpoints)
+For API request/response documentation:
+```mdx
+<RequestExample>
+```typescript
+const response = await api.getUser('123');
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success
+{
+  "id": "123",
+  "name": "John Doe"
+}
+```
+</ResponseExample>
+```
+
+### Content Transformation Rules
+
+1. **User-Focused Writing**:
+   - Use second person ("You can...", "Use this to...")
+   - Active voice
+   - Remove implementation details ("Defined in", "Overrides", "Extends")
+   - Remove version badges and metadata
+
+2. **Parameter Sections**:
+   - Transform `###### Parameters` sections to use `<ParamField>` components
+   - Detect required vs optional (check for `?` or "optional" text)
+   - Generate smart descriptions if missing based on parameter name/type
+   - Use proper location attributes
+
+3. **Return Types**:
+   - Transform `###### Returns` to use `<ResponseField name="returns">`
+   - Clean up complex types (remove line breaks in type strings)
+   - Ensure descriptions end with periods
+
+4. **Interface Properties**:
+   - Use `<ResponseField>` for interface properties
+   - Mark required vs optional
+   - Clean descriptions (remove trailing "#." artifacts)
+
+5. **Code Examples**:
+   - Group consecutive code blocks into `<CodeGroup>`
+   - Preserve language identifiers
+   - Add descriptive titles
+
+6. **Callouts**:
+   - Transform `> **Note:**` to `<Note>`
+   - Transform `> **Warning:**` to `<Warning>`
+   - Transform `#### Remarks` to `<Info>`
+
+7. **Structure Cleanup**:
+   - Remove excessive blank lines (max 2 consecutive)
+   - Fix broken type strings across lines
+   - Remove orphaned closing tags
+   - Remove trailing "#." artifacts
+   - Ensure proper spacing around components
+
+### Navigation (mint.json)
+
+The plugin generates a `mint.json` file with navigation structure:
+```json
+{
+  "navigation": [
+    {
+      "group": "API Reference",
+      "pages": [
+        "api/introduction",
+        "api/classes/user",
+        "api/interfaces/userdata"
+      ]
+    }
+  ]
+}
+```
+
+## Implementation Patterns
+
+### Theme Registration
+```javascript
+// In index.js
+app.renderer.defineTheme('mintlify', MintlifyTheme);
+```
+
+### Page Rendering Flow
+1. TypeDoc processes TypeScript source files and creates reflection tree
+2. `MintlifyTheme.getUrls()` determines which pages to generate (individual pages + index)
+3. For individual pages (classes, interfaces, functions, enums, type aliases):
+   - `MintlifyReflectionRenderer.render()` generates MDX directly from reflections
+   - Uses reflection tree to access types, comments, signatures, etc.
+   - Generates frontmatter, TOC, and content with Mintlify components
+4. For index page:
+   - `MintlifyTheme.generateIndexPageContent()` creates simplified overview
+   - Shows H2 sections and H3 items with links to individual pages
+   - Uses AccordionGroup for multiple sections
+5. All pages respect Mintlify's 4-level heading limit (H1-H4 only)
+
+### Rendering Approach
+
+**Individual Pages** (via `MintlifyReflectionRenderer`):
+- Directly generates MDX from TypeDoc reflection objects
+- No text-based transformations - uses reflection tree directly
+- Renders frontmatter, summary, TOC, constructor, properties, methods
+- Uses Mintlify components: `<ParamField>`, `<ResponseField>`, `<Expandable>`, `<Toc>`, `<Info>`
+- Formats types with links to other generated pages
+- Handles JSDoc comments, examples, remarks, returns tags
+
+**Index Page** (via `MintlifyTheme.generateIndexPageContent()`):
+- Creates simplified overview from reflection tree
+- Groups by kind (Classes, Interfaces, Functions, Enums, Type Aliases)
+- Shows H2 sections and H3 items with descriptions
+- Adds links to individual pages
+- Uses AccordionGroup for multiple sections
+
+**Heading Hierarchy**:
+- Individual pages: H1 (frontmatter title), H3 (sections like "Constructor", "Methods"), H4 (subsections)
+- Index page: H2 (sections), H3 (items)
+- Never use H5 or H6 - convert to bold text or other formatting
+
+## Key Functions to Understand
+
+### Parameter Description Generation
+`generateParameterDescription(name, type)` - Creates user-focused descriptions based on parameter names:
+- `id` → "Unique identifier for the resource."
+- `apiKey` → "Authentication credentials or API key."
+- `timeout` → "Request timeout in milliseconds."
+- `limit` → "Maximum number of results to return."
+
+### Location Detection
+`transformParameters()` detects parameter location from name patterns:
+- IDs → `path`
+- Query params (limit, offset, page) → `query`
+- Auth headers → `header`
+- Data/payload → `body`
+
+### Type Cleanup
+- Remove line breaks from type strings: `Promise<\nUser>` → `Promise<User>`
+- Preserve generics: `Array<string>`, `Promise<User>`
+- Handle complex types: `Record<string, number>`
+
+## Mintlify Documentation References
+
+### Core Documentation
+- **Components**: https://mintlify.com/docs/components - All available Mintlify components (Accordions, Callouts, Cards, Code groups, Columns, Examples, Expandables, Fields, Frames, Icons, Mermaid, Panel, Response fields, Steps, Tabs, Tooltips, Update, View)
+- **API Playground**: https://mintlify.com/docs/api-playground - OpenAPI setup, MDX configuration, AsyncAPI, complex data types
+- **Navigation**: https://mintlify.com/docs/organize/navigation - Structure and customize navigation hierarchy
+- **Pages**: https://mintlify.com/docs/organize/pages - Building blocks of documentation
+- **Format Text**: https://mintlify.com/docs/create/text - Headers (H1-H4 only), text formatting, links, blockquotes, mathematical expressions
+- **Format Code**: https://mintlify.com/docs/create/code - Display inline code and code blocks
+- **llms.txt**: https://mintlify.com/docs/llms.txt - Complete index of Mintlify documentation for AI-friendly reference
+
+### Key Mintlify Features
+- **AI-native**: https://mintlify.com/docs/ai-native - AI enhances reading, writing, and discovering documentation
+- **Agent**: https://mintlify.com/docs/ai/agent.md - Helps write and maintain documentation
+- **Assistant**: https://mintlify.com/docs/ai/assistant.md - Help users succeed and find answers faster
+- **Model Context Protocol**: https://mintlify.com/docs/ai/model-context-protocol.md - Let users access docs through AI tools
+
+### Mintlify Components Reference (from llms.txt)
+- **Accordions**: Collapsible components to show and hide content
+- **Banner**: Site-wide announcements and notifications
+- **Callouts**: Eye-catching context (Info, Warning, Note, Tip, Check)
+- **Cards**: Highlight main points or links with customizable layouts
+- **Code groups**: Display multiple code examples in one component
+- **Columns**: Show cards side by side in a grid format
+- **Examples**: Display code blocks in the right sidebar on desktop
+- **Expandables**: Toggle to display nested properties
+- **Fields**: Set parameters for API or SDK references (ParamField, ResponseField)
+- **Frames**: Wrap images or other components in a container
+- **Icons**: Use icons from popular icon libraries
+- **Mermaid**: Display diagrams using Mermaid
+- **Panel**: Specify the content of the right side panel
+- **Response fields**: Display API response values
+- **Steps**: Sequence content using the Steps component
+- **Tabs**: Toggle content using the Tabs component
+- **Tooltips**: Show a definition when you hover over text
+- **Update**: Keep track of changes and updates
+- **View**: Create multi-view content for different programming languages or frameworks
+
+## Best Practices
+
+1. **Always add frontmatter** with title and description
+2. **Use ParamField for all parameters** with proper location attributes
+3. **Use ResponseField for return types and interface properties**
+4. **Group related code examples** in CodeGroup
+5. **Convert blockquotes to callouts** (Info, Warning, Note, Tip)
+6. **Remove implementation details** that aren't user-focused
+7. **Ensure descriptions end with periods**
+8. **Clean up artifacts** like "#." or broken type strings
+9. **Maintain proper spacing** around components (2 blank lines max)
+10. **Fix broken links** to use Mintlify paths
+
+## TypeDoc Information
+
+### TypeDoc Overview
+- **Repository**: https://github.com/TypeStrong/typedoc
+- **Language**: TypeScript 94.3%, JavaScript 3.5%, CSS 2.1%
+- **Purpose**: Generates documentation from TypeScript source code
+- **Plugin System**: Extensible via plugins and themes
+
+### TypeDoc Plugin API
+- **Application**: Main entry point, manages options and plugins
+- **Converter**: Transforms TypeScript AST into reflection tree
+- **Renderer**: Generates output from reflection tree
+- **PageEvent**: Contains reflection model and template for rendering
+- **Reflection Types**:
+  - `ProjectReflection` (kind: 1) - Root project
+  - `DeclarationReflection` - Classes, interfaces, functions, enums, type aliases
+  - Reflection kinds: 128 (Class), 256 (Interface), 64 (Function), 8 (Enum), 2097152 (Type Alias)
+
+### TypeDoc Configuration
+- **entryPoints**: Source files to document
+- **out**: Output directory
+- **plugin**: Array of plugin names to load
+- **theme**: Theme name (e.g., "mintlify")
+- **outputFileStrategy**: "members" to generate individual pages
+- **membersWithOwnFile**: Array of reflection types that get individual files
+- **fileExtension**: Output file extension (e.g., ".mdx")
+- **flattenOutputFiles**: Whether to flatten directory structure
+
+### TypeDoc Plugin Development
+- Plugins extend TypeDoc's functionality via hooks
+- Themes customize rendering output
+- `getUrls()`: Defines which pages to generate
+- `render()`: Generates content for each page
+- Reflection tree provides structured access to TypeScript types
+
+## Testing with Example Project
+
+### Example Project Structure
+```
+example/
+├── src/
+│   └── index.ts           # Example TypeScript code with JSDoc comments
+├── api/                   # Generated API docs (output directory)
+│   ├── classes/           # Individual class pages
+│   ├── interfaces/        # Individual interface pages
+│   ├── functions/         # Individual function pages
+│   ├── enums/             # Individual enum pages
+│   └── type-aliases/      # Individual type alias pages
+├── introduction.mdx       # Welcome page
+├── installation.mdx       # Installation guide
+├── quickstart.mdx         # Quick start guide
+├── mint.json             # Mintlify configuration
+├── typedoc.json          # TypeDoc configuration
+├── tsconfig.json         # TypeScript configuration
+└── package.json          # Dependencies and scripts
+```
+
+### Testing Workflow
+
+1. **Build the plugin**:
+   ```bash
+   npm run build
+   ```
+
+2. **Run example project**:
+   ```bash
+   npm run example
+   # Or manually:
+   cd example
+   npm install
+   npm run docs
+   ```
+
+3. **Watch for changes** (auto-rebuild and regenerate):
+   ```bash
+   npm run watch:example
+   ```
+
+4. **Preview with Mintlify**:
+   ```bash
+   cd example
+   npm run preview
+   # Or:
+   npm start  # Builds docs and starts preview server
+   ```
+
+5. **Check generated output**:
+   - Individual pages in `example/api/classes/`, `example/api/interfaces/`, etc.
+   - Each page should have proper frontmatter, Mintlify components, and H3/H4 headings only
+   - Links between types should work correctly
+
+### Example Project Configuration
+
+The `example/typedoc.json` demonstrates:
+- `outputFileStrategy: "members"` - Generate individual pages
+- `membersWithOwnFile: ["Class", "Interface", "Function", "Enum", "TypeAlias"]` - Which types get individual files
+- `fileExtension: ".mdx"` - Output as MDX files
+- `theme: "mintlify"` - Use our custom theme
+- `mintlifyComponents: true` - Enable Mintlify component generation
+
+### Example Source Code
+
+The `example/src/index.ts` includes:
+- **Interfaces**: `RequestOptions`, `User` with detailed JSDoc
+- **Functions**: `fetchUser()`, `createUser()` with parameters, examples, and remarks
+- **Classes**: `UserService`, `ApiError` with methods, properties, and constructors
+- **Enums**: `ApiErrorType` with enum members
+- **Type Aliases**: `UserResult` with union types
+
+### Verifying Output
+
+After running `npm run docs`, check:
+1. **File structure**: Individual `.mdx` files in appropriate directories
+2. **Frontmatter**: Each file starts with YAML frontmatter (title, description)
+3. **Headings**: Only H1-H4 headings (no H5/H6)
+4. **Components**: Proper use of `<ParamField>`, `<ResponseField>`, `<Expandable>`, etc.
+5. **Links**: Type references link to individual pages (e.g., `[User](/api/interfaces/User)`)
+6. **Enums**: Compact table format for enum members
+7. **No duplicates**: Summary not duplicated between frontmatter and body
+
+## Common Issues to Fix
+
+1. **Heading hierarchy violations** - Ensure only H1-H4 headings (convert H5/H6 to bold)
+2. **Duplicate summaries** - Check if summary matches frontmatter description before rendering
+3. **Missing type links** - Ensure `typeToUrlMap` is populated in `getUrls()` before rendering
+4. **Broken MDX syntax** - Escape angle brackets in type links (`&lt;`, `&gt;`)
+5. **Index page not generated** - Ensure index page URL is added to URLs list in `getUrls()`
+6. **Relative vs absolute links** - Use absolute paths with `/api/` prefix for Mintlify routing
+7. **Enum formatting** - Use compact table format for enum members
+8. **Missing descriptions** - Generate smart descriptions based on parameter/type names
+
+## When Adding New Features
+
+1. **For reflection-based rendering** (individual pages):
+   - Add method to `MintlifyReflectionRenderer` class
+   - Use TypeDoc reflection objects directly (no text parsing)
+   - Call in `render()` method based on reflection kind
+   - Test with `example/src/index.ts`
+
+2. **For index page**:
+   - Modify `MintlifyTheme.generateIndexPageContent()` if needed
+   - Ensure simplified structure (H2/H3 only)
+
+3. **For new Mintlify components**:
+   - Add generator to `MintlifyComponents` class
+   - Use in `MintlifyReflectionRenderer` where appropriate
+   - Reference Mintlify component documentation
+
+4. **Testing**:
+   - Build: `npm run build`
+   - Test: `cd example && npm run docs`
+   - Preview: `cd example && npm run preview`
+   - Watch: `npm run watch:example` (auto-rebuild on changes)
+
+5. **Documentation**:
+   - Update this `.cursorrules` file if patterns change
+   - Update `MINTLIFY_PATTERNS.md` if adding new component support
+   - Follow Mintlify documentation patterns from https://mintlify.com/docs
+   - Reference TypeDoc plugin development docs: https://typedoc.org/documents/Development.Plugins.html
+

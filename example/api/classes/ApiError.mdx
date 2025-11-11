@@ -1,0 +1,46 @@
+---
+title: "ApiError"
+description: "Custom error class for API errors."
+---
+
+<Toc>
+- [Constructor](#constructor)
+- [Properties](#properties)
+</Toc>
+
+### Constructor
+
+`new constructor(type: ApiErrorType, message: string, statusCode: number)`
+
+Creates a new ApiError
+
+<Expandable title="Parameters">
+<ParamField path="type" type="[ApiErrorType](../api/enums/ApiErrorType)" required>
+The type of error
+</ParamField>
+
+<ParamField path="message" type="string" required>
+Human-readable error message
+</ParamField>
+
+<ParamField path="statusCode" type="number" required>
+HTTP status code
+</ParamField>
+</Expandable>
+
+
+### Properties
+
+**type**
+
+**Type:** `[ApiErrorType](../api/enums/ApiErrorType)`
+
+The type of error
+
+**statusCode**
+
+**Type:** `number`
+
+HTTP status code
+
+

@@ -1,0 +1,32 @@
+# Example directory shouldn't be published
+example/
+
+# Source files (keep src/ as it's needed)
+# example/
+
+# Development files
+.gitignore
+.vscode/
+.idea/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Documentation output
+mintlify-docs/
+docs/
+
+# Git files
+.git/
+.github/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.swp
+*.swo
+

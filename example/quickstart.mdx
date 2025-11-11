@@ -1,0 +1,238 @@
+---
+title: Quick Start
+description: "Generate your first Mintlify documentation in 5 minutes"
+---
+
+# Quick Start
+
+Generate beautiful Mintlify documentation from your TypeScript code in just a few steps.
+
+## Step 1: Add JSDoc Comments
+
+Ensure your TypeScript code has JSDoc comments:
+
+```typescript src/index.ts
+/**
+ * Fetches user data from the API
+ * 
+ * @param userId - The unique identifier for the user
+ * @param options - Optional request configuration
+ * @returns A promise that resolves to the user data
+ * 
+ * @example
+ * ```typescript
+ * const user = await fetchUser('user-123');
+ * console.log(user.name);
+ * ```
+ */
+export async function fetchUser(
+  userId: string,
+  options?: RequestOptions
+): Promise<User> {
+  // Implementation
+}
+
+/**
+ * User information interface
+ */
+export interface User {
+  /** Unique user identifier */
+  id: string;
+  /** User's display name */
+  name: string;
+  /** User's email address */
+  email: string;
+}
+```
+
+<Tip>
+  The better your JSDoc comments, the better your generated documentation will be!
+</Tip>
+
+## Step 2: Generate Documentation
+
+Run TypeDoc to generate your documentation:
+
+```bash
+npm run docs
+```
+
+This will create a `docs` directory (or whatever you specified in `out`) with:
+- Individual pages for each class, interface, function
+- Proper Mintlify frontmatter
+- Mintlify components (ParamField, Callouts, etc.)
+- A `mint.json` navigation file
+
+## Step 3: Preview with Mintlify
+
+Start the Mintlify development server:
+
+```bash
+cd docs
+npx mintlify dev
+```
+
+Or if you added the preview script:
+
+```bash
+npm run docs:preview
+```
+
+Your documentation will be available at `http://localhost:3000` 🎉
+
+## What Gets Generated?
+
+<AccordionGroup>
+  <Accordion title="API Documentation Pages">
+    Each TypeScript class, interface, function, enum, and type alias gets its own page with:
+    - Proper title and description
+    - Parameter documentation
+    - Return type information
+    - Code examples
+    - Type signatures
+  </Accordion>
+
+  <Accordion title="Navigation Structure">
+    A complete `mint.json` file organized by:
+    - Modules
+    - Classes
+    - Interfaces
+    - Functions
+    - Enums
+    - Types
+  </Accordion>
+
+  <Accordion title="Mintlify Components">
+    JSDoc annotations are converted to:
+    - `<ParamField>` for parameters
+    - `<Warning>` for warnings
+    - `<Note>` for notes
+    - `<Info>` for information
+    - `<CodeGroup>` for multiple examples
+  </Accordion>
+</AccordionGroup>
+
+## Example Output
+
+Your TypeScript function:
+
+```typescript
+/**
+ * Creates a new user
+ * @param name - User's name
+ * @param email - User's email
+ */
+export function createUser(name: string, email: string): User {
+  // ...
+}
+```
+
+Becomes this Mintlify page:
+
+```mdx
+---
+title: "createUser"
+description: "Creates a new user"
+---
+
+# createUser
+
+Creates a new user
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  User's name
+</ParamField>
+
+<ParamField path="email" type="string" required>
+  User's email
+</ParamField>
+
+## Returns
+
+`User` - The created user object
+```
+
+## Customize Your Documentation
+
+### Add Custom Pages
+
+Create additional `.mdx` files in your docs directory:
+
+```mdx docs/getting-started.mdx
+---
+title: Getting Started
+---
+
+# Getting Started
+
+Add your custom content here alongside the generated API docs!
+```
+
+### Update mint.json
+
+Edit the generated `mint.json` to:
+- Change colors and branding
+- Add custom navigation groups
+- Configure integrations
+- Set up authentication
+
+### Use Mintlify Components
+
+In your JSDoc comments, use special tags that convert to Mintlify components:
+
+```typescript
+/**
+ * Important function
+ * 
+ * **Warning:** This function requires authentication
+ * 
+ * **Note:** Make sure to handle errors properly
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const result = await importantFunction();
+ * } catch (error) {
+ *   console.error(error);
+ * }
+ * ```
+ */
+```
+
+## Next Steps
+
+<Steps>
+  <Step title="Explore the API">
+    Check out the [API Reference](/api/index) to see the generated documentation
+  </Step>
+  <Step title="Customize">
+    Edit `mint.json` to match your branding and add custom pages
+  </Step>
+  <Step title="Deploy">
+    Push your docs to GitHub and deploy with Mintlify
+  </Step>
+</Steps>
+
+<Check>
+  You're all set! Start documenting your TypeScript project with typedoc-mintlify.
+</Check>
+
+## Tips for Great Documentation
+
+<CardGroup cols={2}>
+  <Card title="Write Detailed JSDoc" icon="file-lines">
+    More detailed comments = better docs
+  </Card>
+  <Card title="Add Examples" icon="code">
+    Use @example tags liberally
+  </Card>
+  <Card title="Type Everything" icon="brackets-curly">
+    Full type annotations help users
+  </Card>
+  <Card title="Keep It Updated" icon="arrows-rotate">
+    Regenerate docs on changes
+  </Card>
+</CardGroup>
+

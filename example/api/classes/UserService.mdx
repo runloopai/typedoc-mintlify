@@ -1,0 +1,61 @@
+---
+title: "UserService"
+description: "A service class for managing users."
+---
+
+<Info>
+This class provides a high-level interface for user management operations.
+It handles caching, error handling, and retry logic automatically.
+</Info>
+
+<Toc>
+- [Constructor](#constructor)
+- [Methods](#methods)
+</Toc>
+
+### Constructor
+
+`new constructor(apiKey: string, baseUrl: string)`
+
+Creates a new UserService instance
+
+<Expandable title="Parameters">
+<ParamField header="apiKey" type="string" required>
+API key for authentication
+</ParamField>
+
+<ParamField path="baseUrl" type="string" required>
+Base URL for the API (defaults to production)
+</ParamField>
+</Expandable>
+
+
+### Methods
+
+`getUser(userId: string): Promise<User>`
+
+Retrieves a user by ID with caching
+
+<Expandable title="Parameters">
+<ParamField path="userId" type="string" required>
+The user ID to fetch
+</ParamField>
+</Expandable>
+
+<Expandable title="Returns">
+<ResponseField name="returns" type="Promise<User>">
+The user object if found
+</ResponseField>
+</Expandable>
+
+`clearCache(): void`
+
+Clears the user cache
+
+<Expandable title="Returns">
+<ResponseField name="returns" type="void">
+Returns void.
+</ResponseField>
+</Expandable>
+
+

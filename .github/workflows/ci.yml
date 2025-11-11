@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check Prettier formatting
+        run: npm run format:check
+
+  test:
+    name: Test Example
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16, 18, 20]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run example
+        run: npm run example
+
+      - name: Check generated files
+        run: |
+          if [ ! -f "example/mintlify-docs/mint.json" ]; then
+            echo "Error: mint.json not generated"
+            exit 1
+          fi
+          echo "✅ Documentation generated successfully"
+
+  validate-commits:
+    name: Validate Commit Messages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate commit messages
+        run: |
+          # Get commits in this PR
+          COMMITS=$(git log origin/main..HEAD --pretty=format:"%s")
+          
+          # Conventional commit pattern
+          PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
+          
+          # Validate each commit
+          while IFS= read -r commit; do
+            if ! echo "$commit" | grep -qE "$PATTERN"; then
+              echo "❌ Invalid commit message: $commit"
+              echo ""
+              echo "Commit messages must follow Conventional Commits format:"
+              echo "  <type>[optional scope]: <description>"
+              exit 1
+            fi
+          done <<< "$COMMITS"
+          
+          echo "✅ All commit messages are valid"
+
+  dependency-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for known vulnerabilities
+        run: |
+          AUDIT_RESULT=$(npm audit --json)
+          VULNERABILITIES=$(echo $AUDIT_RESULT | jq '.metadata.vulnerabilities.total')
+          
+          if [ "$VULNERABILITIES" -gt 0 ]; then
+            echo "⚠️  Found $VULNERABILITIES vulnerabilities"
+            npm audit
+          else
+            echo "✅ No vulnerabilities found"
+          fi
+

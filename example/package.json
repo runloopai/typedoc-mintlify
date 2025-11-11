@@ -1,0 +1,19 @@
+{
+  "name": "typedoc-mintlify-example",
+  "version": "1.0.0",
+  "description": "Example project demonstrating typedoc-mintlify usage",
+  "private": true,
+  "scripts": {
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "preview": "mintlify dev",
+    "start": "npm run docs && npm run preview"
+  },
+  "devDependencies": {
+    "mintlify": "^4.0.0",
+    "typedoc": "^0.26.0",
+    "typedoc-plugin-markdown": "4.2.9",
+    "typedoc-mintlify": "file:..",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "name": "typedoc-mintlify",
+  "version": "0.1.0",
+  "description": "A TypeDoc plugin to generate Mintlify-compatible markdown documentation",
+  "keywords": [
+    "typedoc",
+    "typedoc-plugin",
+    "mintlify",
+    "markdown",
+    "documentation"
+  ],
+  "homepage": "https://github.com/runloopai/typedoc-mintlify#readme",
+  "bugs": {
+    "url": "https://github.com/runloopai/typedoc-mintlify/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/runloopai/typedoc-mintlify.git"
+  },
+  "license": "MIT",
+  "author": "Alexander Dines",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "build": "tsc",
+    "pretest": "npm run lint && npm run type-check",
+    "test": "node --test test/*.test.js",
+    "test:watch": "node --test --watch test/*.test.js",
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md}\"",
+    "example": "cd example && npm install && npm run docs",
+    "example:clean": "rm -rf example/mintlify-docs example/node_modules",
+    "docs": "cd example && npm run docs",
+    "docs:watch": "cd example && npm run docs:watch",
+    "watch": "chokidar \"index.ts\" \"src/**/*.ts\" -c \"npm run build && npm run docs\"",
+    "watch:example": "chokidar \"index.ts\" \"src/**/*.ts\" -c \"npm run build && npm run docs\"",
+    "clean": "rm -rf node_modules package-lock.json example/node_modules example/mintlify-docs dist",
+    "prepublishOnly": "npm run build && npm run lint && npm run format:check && npm run type-check",
+    "prepare": "npm run build && husky install || true",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:patch": "standard-version --release-as patch",
+    "release:dry": "standard-version --dry-run",
+    "postrelease": "git push --follow-tags origin main && npm publish",
+    "version:check": "npm outdated",
+    "version:update": "npm update"
+  },
+  "peerDependencies": {
+    "typedoc": ">=0.26.0"
+  },
+  "dependencies": {
+    "typedoc-plugin-markdown": "4.2.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "8.46.4",
+    "@typescript-eslint/parser": "8.46.4",
+    "chokidar-cli": "^3.0.0",
+    "eslint": "^8.56.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.1",
+    "standard-version": "^9.5.0",
+    "typedoc": "^0.26.0",
+    "typescript": "^5.0.0"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "standard-version": {
+    "skip": {
+      "changelog": false
+    },
+    "types": [
+      {
+        "type": "feat",
+        "section": "Features"
+      },
+      {
+        "type": "fix",
+        "section": "Bug Fixes"
+      },
+      {
+        "type": "docs",
+        "section": "Documentation"
+      },
+      {
+        "type": "refactor",
+        "section": "Code Refactoring"
+      },
+      {
+        "type": "perf",
+        "section": "Performance Improvements"
+      },
+      {
+        "type": "chore",
+        "hidden": true
+      }
+    ]
+  }
+}

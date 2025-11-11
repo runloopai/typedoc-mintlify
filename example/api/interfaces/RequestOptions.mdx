@@ -1,0 +1,27 @@
+---
+title: "RequestOptions"
+description: "Configuration options for API requests."
+---
+
+<Toc>
+- [Properties](#properties)
+</Toc>
+
+**timeout**
+
+<ResponseField name="timeout" type="number">
+Request timeout in milliseconds
+</ResponseField>
+
+**headers**
+
+<ResponseField name="headers" type="Record<string, string>">
+Custom headers to include in the request
+</ResponseField>
+
+**retry**
+
+<ResponseField name="retry" type="{ maxAttempts: number; delay: number }">
+Retry policy configuration
+</ResponseField>
+

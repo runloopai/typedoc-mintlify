@@ -1,0 +1,30 @@
+---
+title: "fetchUser"
+description: "Call fetchUser to fetch user."
+---
+
+<Toc>
+- [Parameters](#parameters)
+- [Returns](#returns)
+</Toc>
+
+`fetchUser(userId: string, options?: RequestOptions): Promise<User>`
+
+Fetches user data from the API
+
+<Expandable title="Parameters">
+<ParamField path="userId" type="string" required>
+The unique identifier for the user
+</ParamField>
+
+<ParamField path="options" type="[RequestOptions](../api/interfaces/RequestOptions)">
+Optional request configuration
+</ParamField>
+</Expandable>
+
+<Expandable title="Returns">
+<ResponseField name="returns" type="Promise<User>">
+A promise that resolves to the user data
+</ResponseField>
+</Expandable>
+
