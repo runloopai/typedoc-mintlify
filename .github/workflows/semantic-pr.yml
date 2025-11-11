@@ -44,13 +44,19 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          # Get all commits in the PR
-          COMMITS=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%s")
+          # Get all commits in the PR, excluding merge commits
+          COMMITS=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%s" --no-merges)
           
-          # Count commit types
-          FEAT_COUNT=$(echo "$COMMITS" | grep -cE "^feat" || true)
-          FIX_COUNT=$(echo "$COMMITS" | grep -cE "^fix" || true)
-          DOCS_COUNT=$(echo "$COMMITS" | grep -cE "^docs" || true)
+          # Filter out merge-related commits and duplicates
+          CLEAN_COMMITS=$(echo "$COMMITS" | \
+            grep -vE "^Merge |^merge |^Merged |^merged " | \
+            grep -vE "^[0-9a-f]{8,} " | \
+            sort -u)
+          
+          # Count commit types from clean commits
+          FEAT_COUNT=$(echo "$CLEAN_COMMITS" | grep -cE "^feat" || true)
+          FIX_COUNT=$(echo "$CLEAN_COMMITS" | grep -cE "^fix" || true)
+          DOCS_COUNT=$(echo "$CLEAN_COMMITS" | grep -cE "^docs" || true)
           
           # Determine primary type (feat > fix > docs)
           if [ "$FEAT_COUNT" -gt 0 ]; then
@@ -63,44 +69,75 @@ jobs:
             TYPE="chore"
           fi
           
-          # Extract scopes from commits
-          SCOPES=$(echo "$COMMITS" | grep -oE "^[^(]+\(([^)]+)\)" | sed 's/^[^(]*(\([^)]*\))/\1/' | sort -u | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
+          # Extract scopes from clean commits (only conventional commits)
+          SCOPES=$(echo "$CLEAN_COMMITS" | \
+            grep -E "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\([^)]+\):" | \
+            grep -oE "\(([^)]+)\)" | \
+            sed 's/[()]//g' | \
+            sort -u | \
+            tr '\n' ',' | \
+            sed 's/,$//' | \
+            sed 's/,/, /g')
           
-          # Build description from commit messages
-          DESCRIPTIONS=$(echo "$COMMITS" | sed 's/^[^:]*: //' | head -5)
-          
-          # Create suggested message
+          # Create suggested message header
           if [ -n "$SCOPES" ]; then
-            SUGGESTED="$TYPE($SCOPES): "
+            SUGGESTED_HEADER="$TYPE($SCOPES): "
           else
-            SUGGESTED="$TYPE: "
+            SUGGESTED_HEADER="$TYPE: "
           fi
           
-          # Use PR title if it follows conventional commits, otherwise use first commit description
+          # Use PR title if it follows conventional commits, otherwise build from commits
           if echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?:"; then
             # PR title already has type, use it as-is
             FULL_MESSAGE="$PR_TITLE"
           elif [ -n "$PR_TITLE" ]; then
-            # PR title exists but no type, add our determined type
-            PR_DESC=$(echo "$PR_TITLE" | sed 's/^[^:]*: //')
-            FULL_MESSAGE="${SUGGESTED}${PR_TITLE}"
+            # PR title exists but no type, add our determined type and scope
+            FULL_MESSAGE="${SUGGESTED_HEADER}${PR_TITLE}"
           else
-            # No PR title, use first commit description
-            FIRST_DESC=$(echo "$DESCRIPTIONS" | head -1)
-            FULL_MESSAGE="${SUGGESTED}${FIRST_DESC}"
+            # No PR title, use first conventional commit description
+            FIRST_CONV_COMMIT=$(echo "$CLEAN_COMMITS" | grep -E "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)" | head -1)
+            if [ -n "$FIRST_CONV_COMMIT" ]; then
+              FIRST_DESC=$(echo "$FIRST_CONV_COMMIT" | sed 's/^[^:]*: //')
+              FULL_MESSAGE="${SUGGESTED_HEADER}${FIRST_DESC}"
+            else
+              # Fallback to first commit
+              FIRST_DESC=$(echo "$CLEAN_COMMITS" | head -1)
+              FULL_MESSAGE="${SUGGESTED_HEADER}${FIRST_DESC}"
+            fi
           fi
           
-          # Add body with commit details
+          # Add body with commit details (preserve type and scope for each commit)
           BODY=""
+          SEEN_COMMITS=""
           while IFS= read -r commit; do
-            if [ -n "$commit" ]; then
-              # Extract description (remove type and scope)
-              DESC=$(echo "$commit" | sed 's/^[^:]*: //')
-              BODY="${BODY}- ${DESC}\n"
+            if [ -z "$commit" ]; then
+              continue
             fi
-          done <<< "$COMMITS"
+            
+            # Skip merge commits
+            if echo "$commit" | grep -qE "^Merge |^merge "; then
+              continue
+            fi
+            
+            # Skip if we've seen this exact commit message before
+            if echo "$SEEN_COMMITS" | grep -qFx "$commit"; then
+              continue
+            fi
+            
+            # Add to seen list
+            SEEN_COMMITS="${SEEN_COMMITS}${commit}\n"
+            
+            # Check if it's a conventional commit
+            if echo "$commit" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?:"; then
+              # Preserve the full commit format (type(scope): description)
+              BODY="${BODY}- ${commit}\n"
+            else
+              # Non-conventional commit, just add description
+              BODY="${BODY}- ${commit}\n"
+            fi
+          done <<< "$CLEAN_COMMITS"
           
-          # Limit to first 10 commits
+          # Limit to first 10 unique commits
           BODY=$(echo -e "$BODY" | head -10)
           
           # Append body if we have commits

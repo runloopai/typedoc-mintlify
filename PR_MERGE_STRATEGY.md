@@ -43,7 +43,9 @@ feat(renderer): add automatic type linking
 
 #### Multiple Features/Fixes PR
 
-If your PR has multiple related changes, combine them:
+If your PR has multiple related changes, you can either:
+
+**Option 1: Combined scopes in header**
 
 ```
 feat(renderer,theme): improve type handling and MDX escaping
@@ -53,6 +55,19 @@ feat(renderer,theme): improve type handling and MDX escaping
 - Simplify type attributes in ResponseField components
 - Update documentation
 ```
+
+**Option 2: Preserve individual commit format in body (Recommended)**
+
+```
+feat: improve type handling and MDX escaping
+
+- feat(renderer): add automatic type linking
+- feat(theme): fix MDX escaping issues
+- fix(renderer): simplify type attributes
+- docs: update documentation
+```
+
+This format preserves the individual feature scopes in the body, making it clearer what each change does.
 
 #### Multiple Unrelated Changes
 
