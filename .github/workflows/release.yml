@@ -18,10 +18,10 @@ jobs:
     name: Test and Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: runloopai/checkout@main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: runloopai/setup-node@main
         with:
           node-version: '20'
           cache: 'npm'
@@ -44,13 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'chore(release)')"
     steps:
-      - uses: actions/checkout@v4
+      - uses: runloopai/checkout@main
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: runloopai/setup-node@main
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
@@ -94,7 +94,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check_release.outputs.release_needed == 'true'
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

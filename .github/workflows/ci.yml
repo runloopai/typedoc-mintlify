@@ -13,10 +13,10 @@ jobs:
     name: Lint Code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: runloopai/checkout@main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: runloopai/setup-node@main
         with:
           node-version: '20'
           cache: 'npm'
@@ -37,10 +37,10 @@ jobs:
       matrix:
         node-version: [22]
     steps:
-      - uses: actions/checkout@v4
+      - uses: runloopai/checkout@main
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: runloopai/setup-node@main
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -64,12 +64,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: runloopai/checkout@main
         with:
           fetch-depth: 0
 
       - name: Validate commit messages
-        uses: wagoid/commitlint-github-action@v6
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed
         with:
           configFile: .commitlintrc.json
           failOnWarnings: false
@@ -79,10 +79,10 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: runloopai/checkout@main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: runloopai/setup-node@main
         with:
           node-version: '20'
           cache: 'npm'
